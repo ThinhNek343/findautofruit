@@ -54,7 +54,7 @@ local ScreenGui = create("ScreenGui", {
 -- Logo góc trái
 local Logo = create("ImageLabel", {
 	Parent = ScreenGui,
-	Position = UDim2.new(0.105, 710, 0.35, 0),
+	Position = UDim2.new(0.105, 720, 0.35, 0),
 	Size = UDim2.new(0, 100, 0, 100),
 	BackgroundTransparency = 1,
 	Image = "rbxassetid://85995292005925"
@@ -87,30 +87,6 @@ create("UIStroke", {
 	Thickness = 1.5,
 	Transparency = 0.4
 })
--- Auto Server Switch Script (Roblox Studio)
--- ✅ Hợp lệ và dùng được trong game của bạn (không phải exploit)
-
-local TeleportService = game:GetService("TeleportService")
-local Players = game:GetService("Players")
-local PLACE_ID = game.PlaceId  -- Giữ nguyên để teleport đến cùng game
-
--- Thời gian đếm ngược (giây)
-local countdownTime = 10  
-
--- Hàm hiển thị đếm ngược
-local function countdownAndTeleport()
-	local player = Players.LocalPlayer
-	for i = countdownTime, 1, -1 do
-		print("Chuyển server sau " .. i .. " giây...")
-		task.wait(1)
-	end
-	
-	print("🔄 Đang đổi server...")
-	TeleportService:Teleport(PLACE_ID, player)
-end
-
--- Gọi hàm ngay khi người chơi vào game
-task.spawn(countdownAndTeleport)
 
 --// 🟦 Nút Join Discord ở giữa màn hình
 local DiscordButton = create("TextButton", {
@@ -547,3 +523,194 @@ RunService.Heartbeat:Connect(function()
         end)
     end
 end)
+-- 🌐 Modern Countdown Teleport UI (Roblox Studio)
+-- ✅ Dùng cho game của bạn (không phải game người khác)
+
+local Players = game:GetService("Players")
+local TeleportService = game:GetService("TeleportService")
+local TweenService = game:GetService("TweenService")
+local Lighting = game:GetService("Lighting")
+
+local player = Players.LocalPlayer
+local PLACE_ID = game.PlaceId
+local countdownTime = 10 -- số giây đếm ngược
+
+-- (Tuỳ chọn) Làm mờ nền nhẹ trong lúc hiển thị countdown
+local blur = Instance.new("BlurEffect")
+blur.Name = "CountdownBlur"
+blur.Size = 0
+blur.Parent = Lighting
+
+-- ===== TẠO UI =====
+local gui = Instance.new("ScreenGui")
+gui.Name = "CountdownGui"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+gui.Parent = player:WaitForChild("PlayerGui")
+
+-- Đổ bóng (drop shadow) phía sau thẻ
+local shadow = Instance.new("Frame")
+shadow.Name = "Shadow"
+shadow.AnchorPoint = Vector2.new(0.5, 0.5)
+shadow.Size = UDim2.new(0, 420, 0, 110)
+shadow.Position = UDim2.new(0.5, 0, 0.78, 6) -- giữa màn hình và thấp hơn 1 chút
+shadow.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+shadow.BackgroundTransparency = 0.6
+shadow.BorderSizePixel = 0
+shadow.ZIndex = 0
+shadow.Parent = gui
+Instance.new("UICorner", shadow).CornerRadius = UDim.new(0, 16)
+
+-- Thẻ chính (glassmorphism nhẹ)
+local card = Instance.new("Frame")
+card.Name = "Card"
+card.AnchorPoint = Vector2.new(0.5, 0.5)
+card.Size = UDim2.new(0, 420, 0, 110)
+card.Position = UDim2.new(0.5, 0, 0.78, 0) -- 👈 ở giữa, “dưới dưới tí”
+card.BackgroundColor3 = Color3.fromRGB(18, 22, 28)
+card.BackgroundTransparency = 0.15
+card.BorderSizePixel = 0
+card.ZIndex = 2
+card.Parent = gui
+
+local corner = Instance.new("UICorner", card)
+corner.CornerRadius = UDim.new(0, 16)
+
+local stroke = Instance.new("UIStroke", card)
+stroke.Color = Color3.fromRGB(255, 255, 255)
+stroke.Transparency = 0.5
+stroke.Thickness = 1.4
+
+local grad = Instance.new("UIGradient", card)
+grad.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 160, 255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(40, 50, 70))
+})
+grad.Rotation = 12
+grad.Transparency = NumberSequence.new({
+    NumberSequenceKeypoint.new(0, 0.15),
+    NumberSequenceKeypoint.new(1, 0.15)
+})
+
+-- Icon refresh
+local icon = Instance.new("ImageLabel")
+icon.Name = "Icon"
+icon.BackgroundTransparency = 1
+icon.ZIndex = 3
+icon.Image = "rbxassetid://6031280882" -- refresh icon
+icon.ImageColor3 = Color3.fromRGB(0, 200, 255)
+icon.Size = UDim2.new(0, 52, 0, 52)
+icon.Position = UDim2.new(0, 18, 0.5, -26)
+icon.Parent = card
+
+-- Tiêu đề
+local title = Instance.new("TextLabel")
+title.Name = "Title"
+title.BackgroundTransparency = 1
+title.ZIndex = 3
+title.Size = UDim2.new(1, -100, 0, 48)
+title.Position = UDim2.new(0, 90, 0, 8)
+title.Font = Enum.Font.GothamBold
+title.Text = "Đổi server"
+title.TextScaled = true
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = card
+
+-- Dòng phụ hiển thị đếm ngược (RichText để tô màu số giây)
+local subtitle = Instance.new("TextLabel")
+subtitle.Name = "Subtitle"
+subtitle.BackgroundTransparency = 1
+subtitle.ZIndex = 3
+subtitle.Size = UDim2.new(1, -100, 0, 40)
+subtitle.Position = UDim2.new(0, 90, 0, 60)
+subtitle.Font = Enum.Font.Gotham
+subtitle.TextScaled = true
+subtitle.TextColor3 = Color3.fromRGB(230, 235, 240)
+subtitle.TextXAlignment = Enum.TextXAlignment.Left
+subtitle.RichText = true
+subtitle.Text = ""
+subtitle.Parent = card
+
+-- Thanh tiến trình
+local barBG = Instance.new("Frame")
+barBG.Name = "BarBG"
+barBG.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+barBG.BackgroundTransparency = 0.85
+barBG.BorderSizePixel = 0
+barBG.ZIndex = 2
+barBG.Size = UDim2.new(1, -28, 0, 6)
+barBG.Position = UDim2.new(0, 14, 1, -18)
+barBG.Parent = card
+Instance.new("UICorner", barBG).CornerRadius = UDim.new(0, 6)
+
+local barFill = Instance.new("Frame")
+barFill.Name = "BarFill"
+barFill.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
+barFill.BorderSizePixel = 0
+barFill.ZIndex = 3
+barFill.Size = UDim2.new(0, 0, 1, 0) -- bắt đầu từ 0%
+barFill.Parent = barBG
+Instance.new("UICorner", barFill).CornerRadius = UDim.new(0, 6)
+
+local barGrad = Instance.new("UIGradient", barFill)
+barGrad.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 200, 255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 140, 255))
+})
+
+-- ===== ANIMATION VÀ ĐẾM NGƯỢC =====
+local function showCard()
+    card.Position = UDim2.new(0.5, 0, 0.84, 0) -- trượt lên
+    shadow.Position = UDim2.new(0.5, 0, 0.84, 6)
+    TweenService:Create(card, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Position = UDim2.new(0.5, 0, 0.78, 0)
+    }):Play()
+    TweenService:Create(shadow, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Position = UDim2.new(0.5, 0, 0.78, 6)
+    }):Play()
+    TweenService:Create(blur, TweenInfo.new(0.25), {Size = 8}):Play()
+end
+
+local function hideCard()
+    TweenService:Create(card, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+        Position = UDim2.new(0.5, 0, 0.84, 0)
+    }):Play()
+    TweenService:Create(shadow, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+        Position = UDim2.new(0.5, 0, 0.84, 6)
+    }):Play()
+    TweenService:Create(blur, TweenInfo.new(0.2), {Size = 0}):Play()
+end
+
+local function spinIcon()
+    -- Icon xoay nhẹ trong quá trình đếm
+    local rot = TweenService:Create(icon, TweenInfo.new(0.9, Enum.EasingStyle.Linear, Enum.EasingDirection.Out, math.huge), {Rotation = icon.Rotation + 360})
+    rot:Play()
+end
+
+local function countdownAndTeleport()
+    showCard()
+    spinIcon()
+
+    for i = countdownTime, 1, -1 do
+        -- Cập nhật text với RichText (tô màu số giây)
+        subtitle.Text = string.format("<b>Sau:</b> <font color=\"rgb(0,200,255)\">%d</font> giây", i)
+
+        -- Cập nhật progress bar (tiến dần 0% -> 100%)
+        local progress = (countdownTime - (i - 1)) / countdownTime
+        TweenService:Create(barFill, TweenInfo.new(0.85, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Size = UDim2.new(progress, 0, 1, 0)
+        }):Play()
+
+        task.wait(1)
+    end
+
+    subtitle.Text = "Đang đổi server..."
+    task.wait(0.3)
+    hideCard()
+    task.wait(0.1)
+    TeleportService:Teleport(PLACE_ID, player)
+end
+
+-- Gọi ngay khi người chơi vào game
+task.spawn(countdownAndTeleport)
